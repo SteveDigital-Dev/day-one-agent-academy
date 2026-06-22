@@ -19,14 +19,26 @@ router = APIRouter()
 
 
 async def _resolve_student(
-    current_user: User, db: AsyncSession
+    current_user: User, db: AsyncSession, student_id: str | None = None
 ) -> Student:
     if current_user.role == "student":
         student = await get_student_by_id(db, str(current_user.id))
         if not student:
             raise HTTPException(status_code=404, detail="Student not found")
         return student
-    raise HTTPException(status_code=403, detail="Student access required")
+    if current_user.role == "admin" and student_id:
+        student = await get_student_by_id(db, student_id)
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        return student
+    if current_user.role == "parent" and student_id:
+        student = await get_student_by_id(db, student_id)
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        if student.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized for this student")
+        return student
+    raise HTTPException(status_code=403, detail="student_id required")
 
 
 @router.put("/progress/{lesson_id}", response_model=ProgressResponse)
@@ -47,10 +59,11 @@ async def update_lesson_progress(
 
 @router.get("/progress", response_model=list[ProgressResponse])
 async def list_progress(
+    student_id: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    student = await _resolve_student(current_user, db)
+    student = await _resolve_student(current_user, db, student_id)
     return await get_student_progress(db, str(student.id))
 
 

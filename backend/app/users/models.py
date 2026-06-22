@@ -31,6 +31,7 @@ class Student(Base):
     family_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(), ForeignKey("families.id"), nullable=True
     )
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     grade_level: Mapped[str] = mapped_column(String(10), nullable=False)
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     nyc_student_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -39,4 +40,4 @@ class Student(Base):
 
     @property
     def full_name(self) -> str:
-        return self.user.full_name
+        return self.name

@@ -89,6 +89,7 @@ async def seed():
             student = Student(
                 user_id=parent.id,
                 family_id=family.id,
+                name=s["name"],
                 grade_level=s["grade"],
                 nyc_student_id=s["nyc_id"],
             )
