@@ -42,7 +42,7 @@ export function ParentStudents() {
           </Card>
         )}
         {students.map((s) => (
-          <Card key={s.id}>
+          <Card key={s.id} className="cursor-pointer hover:border-academy-300 transition-colors" onClick={() => { window.location.href = `/dashboard/students/${s.id}`; }}>
             <div className="mb-4">
               <h3 className="text-lg font-semibold">{s.full_name}</h3>
               <p className="text-sm text-gray-500">Grade {s.grade_level}</p>

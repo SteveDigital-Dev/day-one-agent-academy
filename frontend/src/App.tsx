@@ -8,6 +8,8 @@ import { RegisterPage } from "./pages/Register";
 import { ParentDashboard } from "./pages/parent/Dashboard";
 import { ParentStudents } from "./pages/parent/Students";
 import { ParentCompliance } from "./pages/parent/Compliance";
+import { ParentCurriculum } from "./pages/parent/Curriculum";
+import { StudentDetail } from "./pages/parent/StudentDetail";
 import { TeacherDashboard } from "./pages/teacher/Dashboard";
 import { TeacherStudents } from "./pages/teacher/Students";
 import { TeacherAnalytics } from "./pages/teacher/Analytics";
@@ -23,7 +25,9 @@ function DashboardRouter() {
         <Routes>
           <Route index element={<ParentDashboard />} />
           <Route path="students" element={<ParentStudents />} />
+          <Route path="students/:studentId" element={<StudentDetail />} />
           <Route path="compliance" element={<ParentCompliance />} />
+          <Route path="curriculum" element={<ParentCurriculum />} />
           <Route path="*" element={<Navigate to="" replace />} />
         </Routes>
       </Layout>

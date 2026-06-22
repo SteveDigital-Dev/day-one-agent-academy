@@ -5,6 +5,7 @@ const navLinks: Record<string, { label: string; href: string }[]> = {
   parent: [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Students", href: "/dashboard/students" },
+    { label: "Curriculum", href: "/dashboard/curriculum" },
     { label: "Compliance", href: "/dashboard/compliance" },
   ],
   teacher: [

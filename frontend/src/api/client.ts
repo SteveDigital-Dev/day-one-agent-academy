@@ -57,6 +57,23 @@ export interface Family {
   name: string;
 }
 
+export interface Concept {
+  id: string;
+  subject_id: string;
+  name: string;
+  description: string | null;
+  order_index: number;
+}
+
+export interface Lesson {
+  id: string;
+  concept_id: string;
+  title: string;
+  content_type: string;
+  order_index: number;
+  estimated_minutes: number;
+}
+
 export interface ComplianceStatus {
   school_year: string;
   loi_status: string;
