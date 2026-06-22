@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Individualized Home Instruction Plan</title>
+<style>
+  body { font-family: 'Times New Roman', serif; font-size: 12pt; margin: 1in; line-height: 1.6; }
+  h1 { text-align: center; font-size: 16pt; margin-bottom: 0.5in; }
+  h2 { font-size: 14pt; margin-top: 0.3in; }
+  table { width: 100%; border-collapse: collapse; margin: 0.2in 0; }
+  th, td { border: 1px solid #000; padding: 6px; text-align: left; }
+  th { background: #f0f0f0; }
+  .section { margin-bottom: 0.3in; }
+  .field { margin: 8px 0; }
+  .label { font-weight: bold; }
+</style></head>
+<body>
+<h1>INDIVIDUALIZED HOME INSTRUCTION PLAN (IHIP)</h1>
+<p style="text-align:center">Pursuant to 8 NYCRR § 100.10(d) and (e)</p>
+
+<div class="section">
+  <h2>1. Student Information</h2>
+  <div class="field"><span class="label">Student Name:</span> {{ student_name }}</div>
+  <div class="field"><span class="label">Grade Level:</span> {{ grade_level }}</div>
+  <div class="field"><span class="label">School Year:</span> {{ school_year }}</div>
+  <div class="field"><span class="label">School District:</span> {{ district }}</div>
+  <div class="field"><span class="label">Date of Plan:</span> {{ today }}</div>
+</div>
+
+<div class="section">
+  <h2>2. Individuals Providing Instruction</h2>
+  <table>
+    <tr><th>Name</th><th>Role</th></tr>
+    {% for instructor in instructors %}
+    <tr><td>{{ instructor.name }}</td><td>{{ instructor.role }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="section">
+  <h2>3. Curriculum Materials by Subject</h2>
+  <table>
+    <tr><th>Subject</th><th>Curriculum / Materials</th></tr>
+    {% for subject, materials in curriculum_materials.items() %}
+    <tr><td>{{ subject }}</td><td>{{ materials }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="section">
+  <h2>4. Quarterly Report Schedule</h2>
+  <table>
+    <tr><th>Quarter</th><th>Due Date</th></tr>
+    {% for date in quarterly_dates %}
+    <tr><td>Quarter {{ loop.index }}</td><td>{{ date }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="section">
+  <h2>5. Parent/Guardian Certification</h2>
+  <p>I certify that the instruction provided will be in compliance with the New York State Education Department's Commissioner's Regulations Part 100.10 and Education Law § 3204.</p>
+  <div class="field"><span class="label">Parent Name:</span> {{ parent_name }}</div>
+  <div class="field"><span class="label">Date:</span> {{ today }}</div>
+  <br>
+  <div style="border-top:1px solid #000; width: 50%; margin-top: 0.5in;">Signature</div>
+</div>
+</body>
+</html>
