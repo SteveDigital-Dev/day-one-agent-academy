@@ -18,7 +18,9 @@ async function request<T>(
   const res = await fetch(`${BASE}${path}`, { ...options, headers });
   if (res.status === 401) {
     localStorage.removeItem("token");
-    window.location.href = "/login";
+    if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/register")) {
+      window.location.href = "/login";
+    }
     throw new Error("Unauthorized");
   }
   if (!res.ok) {
