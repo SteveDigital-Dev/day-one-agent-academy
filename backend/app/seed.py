@@ -2,8 +2,10 @@
 hour logs, progress, quizzes, and compliance documents for the current school year."""
 
 import asyncio
+import os
 import uuid
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from random import choice, randint, uniform
 
 from sqlalchemy import select, func as sa_func
@@ -16,6 +18,38 @@ from app.curriculum.models import Subject, Concept, Lesson, concept_prerequisite
 from app.learning.models import LessonProgress, QuizAttempt
 from app.compliance.models import ComplianceDocument, HourLog, AnnualAssessment
 from app.compliance.service import current_school_year
+
+
+# ─── Lesson content loading ────────────────────────────────────────────────
+
+LESSONS_DIR = Path(__file__).resolve().parent.parent.parent / "lessons"
+
+# Maps subject names to their directory names under lessons/
+SUBJECT_DIR_MAP = {
+    "Mathematics": "mathematics",
+    "English Language Arts": "english-language-arts",
+    "Science": "science",
+}
+
+
+def load_lesson_content(subject_name: str, unit: int, lesson_num: int) -> str | None:
+    """Try to load lesson content from the lessons/ directory. Returns None if not found."""
+    dir_name = SUBJECT_DIR_MAP.get(subject_name)
+    if not dir_name:
+        return None
+    file_path = LESSONS_DIR / dir_name / f"unit-{unit}-lesson-{lesson_num}.md"
+    if file_path.exists():
+        return file_path.read_text(encoding="utf-8").strip()
+    return None
+
+
+def extract_lesson_title(content: str, fallback: str) -> str:
+    """Extract the first # heading from markdown content as the lesson title."""
+    for line in content.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("# "):
+            return stripped[2:].strip()
+    return fallback
 
 
 # ─── Config ───────────────────────────────────────────────────────────────────
@@ -125,6 +159,8 @@ async def seed():
 
         # ── 5. Concepts & Lessons ─────────────────────────────────────────
         concept_map = {}
+        loaded_count = 0
+        placeholder_count = 0
         for subj_name, subj in subject_map.items():
             for i in range(1, 4):
                 concept = Concept(
@@ -139,10 +175,17 @@ async def seed():
                 concept_map[(subj_name, i)] = concept
 
                 for j in range(1, 5):
+                    content = load_lesson_content(subj_name, i, j)
+                    fallback_title = f"{subj_name} — Lesson {i}.{j}"
+                    if content:
+                        loaded_count += 1
+                    else:
+                        content = f"Lesson content for {subj_name} unit {i} lesson {j}."
+                        placeholder_count += 1
                     lesson = Lesson(
                         concept_id=concept.id,
-                        title=f"{subj_name} — Lesson {i}.{j}",
-                        content=f"Lesson content for {subj_name} unit {i} lesson {j}.",
+                        title=extract_lesson_title(content, fallback_title),
+                        content=content,
                         order_index=j,
                         estimated_minutes=choice([20, 25, 30, 35, 40, 45]),
                     )
@@ -160,7 +203,7 @@ async def seed():
                         prerequisite_id=prereq.id,
                     )
                     await db.execute(stmt)
-        print("✓ Created concepts, lessons, and prerequisite links")
+        print(f"✓ Created concepts, lessons, and prerequisite links ({loaded_count} real content, {placeholder_count} placeholder)")
 
         # ── 6. Hour Logs & Progress per Student ──────────────────────────
         all_lessons = (await db.execute(select(Lesson))).scalars().all()

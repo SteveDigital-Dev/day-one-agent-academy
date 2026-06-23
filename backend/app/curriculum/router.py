@@ -18,6 +18,8 @@ from app.curriculum.service import (
     get_concept_path,
     create_concept,
     get_lessons_by_concept,
+    get_lesson_by_id,
+    get_all_concepts,
     create_lesson,
 )
 
@@ -61,6 +63,19 @@ async def create_concept_endpoint(
 @router.get("/concepts/{concept_id}/lessons", response_model=list[LessonResponse])
 async def list_lessons(concept_id: str, db: AsyncSession = Depends(get_db)):
     return await get_lessons_by_concept(db, concept_id)
+
+
+@router.get("/concepts", response_model=list[ConceptResponse])
+async def list_all_concepts(db: AsyncSession = Depends(get_db)):
+    return await get_all_concepts(db)
+
+
+@router.get("/lessons/{lesson_id}", response_model=LessonResponse)
+async def get_lesson(lesson_id: str, db: AsyncSession = Depends(get_db)):
+    lesson = await get_lesson_by_id(db, lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404)
+    return lesson
 
 
 @router.post("/lessons", response_model=LessonResponse, status_code=201)

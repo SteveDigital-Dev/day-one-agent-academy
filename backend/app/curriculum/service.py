@@ -69,6 +69,18 @@ async def get_concept_path(
     return path
 
 
+async def get_lesson_by_id(db: AsyncSession, lesson_id: str) -> Lesson | None:
+    result = await db.execute(
+        select(Lesson).where(Lesson.id == uuid.UUID(lesson_id))
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_all_concepts(db: AsyncSession) -> list[Concept]:
+    result = await db.execute(select(Concept).order_by(Concept.order_index))
+    return list(result.scalars().all())
+
+
 async def get_lessons_by_concept(db: AsyncSession, concept_id: str) -> list[Lesson]:
     result = await db.execute(
         select(Lesson)

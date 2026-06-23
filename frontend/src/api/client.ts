@@ -69,6 +69,7 @@ export interface Lesson {
   id: string;
   concept_id: string;
   title: string;
+  content: string | null;
   content_type: string;
   order_index: number;
   estimated_minutes: number;

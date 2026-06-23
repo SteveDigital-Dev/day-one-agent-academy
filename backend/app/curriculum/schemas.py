@@ -38,6 +38,7 @@ class LessonResponse(BaseModel):
     id: uuid.UUID
     concept_id: uuid.UUID
     title: str
+    content: str | None = None
     content_type: str
     order_index: int
     estimated_minutes: int
