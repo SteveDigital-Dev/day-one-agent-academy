@@ -1,9 +1,12 @@
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
 from app.auth.router import get_current_user
-from app.ai.service import tutor_chat, generate_quiz, explain_concept
+from app.database import get_db
+from app.ai.service import tutor_chat, generate_quiz, explain_concept, generate_lesson_quiz
+from app.curriculum.service import get_lesson_by_id
 
 router = APIRouter()
 
@@ -63,6 +66,24 @@ async def explain_endpoint(
         grade_level=body.grade_level,
     )
     return {"explanation": response}
+
+
+@router.get("/lesson/{lesson_id}/quiz")
+async def lesson_quiz_endpoint(
+    lesson_id: str,
+    count: int = 5,
+    grade_level: str = "6",
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    lesson = await get_lesson_by_id(db, lesson_id)
+    if not lesson or not lesson.content:
+        raise HTTPException(status_code=404, detail="Lesson not found or has no content")
+    try:
+        questions = await generate_lesson_quiz(lesson.content, grade_level, count)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI generation failed: {e}")
+    return {"questions": questions}
 
 
 @router.get("/provider")

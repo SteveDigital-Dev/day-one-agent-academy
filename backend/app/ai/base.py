@@ -50,3 +50,22 @@ class TutorPromptBuilder:
             {"role": "system", "content": f"Explain '{concept}' to a {grade_level} grade student. Use analogies, examples, and simple language."},
             {"role": "user", "content": f"Explain {concept}"},
         ]
+
+    @classmethod
+    def lesson_quiz(cls, content: str, grade_level: str, count: int = 5) -> list[dict]:
+        # Prefill the assistant turn with "[" so the model is forced to continue the JSON array.
+        # /no_think disables qwen3's extended thinking mode so content field is non-empty.
+        return [
+            {"role": "system", "content": "/no_think"},
+            {
+                "role": "user",
+                "content": (
+                    f"Generate {count} multiple-choice quiz questions for grade {grade_level} "
+                    f"based on this lesson. Return a JSON array; each item: "
+                    f'[{{"type":"quiz","prompt":"...","options":["A","B","C","D"],"correct":0}}].\n\n'
+                    f"Lesson:\n{content[:1500]}"
+                ),
+            },
+            # Prefill forces the model to continue from "[" rather than reasoning first
+            {"role": "assistant", "content": "["},
+        ]

@@ -104,3 +104,10 @@ export interface Subject {
   grade_band: string;
   is_required: boolean;
 }
+
+export interface AIQuizQuestion {
+  type: "quiz";
+  prompt: string;
+  options: string[];
+  correct: number;
+}

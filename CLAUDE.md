@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 uv sync                                          # install deps
-uv run uvicorn app.main:app --reload             # API on :8000
+uv run uvicorn app.main:app --port 8001 --reload # API on :8001
 uv run pytest tests/ -v                          # all 22 tests
 uv run pytest tests/test_auth.py -v              # single test file
 uv run python -m app.seed                        # populate demo data
@@ -24,9 +24,9 @@ uv run ruff format app/                          # format
 
 ```bash
 npm install
-npm run dev          # dev server on :5173 (proxies /api → localhost:8000)
+npm run dev          # dev server on :5173 (proxies /api → localhost:8001)
 npm run build        # tsc + vite build
-npx vitest run       # 10 frontend tests
+npx vitest run       # frontend tests
 ```
 
 ### Environment
@@ -43,7 +43,11 @@ See `AGENTS.md` for the full breakdown. Key points for day-to-day edits:
 
 **Async everywhere** — all DB access is async (`aiosqlite` in dev, `asyncpg` in prod). Use `await` and `async with get_db()` session patterns consistently.
 
-**AI provider** — `app/ai/` is model-agnostic. Switch providers via `AA_AI_PROVIDER` env var (`ollama` | `openai` | `anthropic`). Don't hardcode provider logic outside that module.
+**AI provider** — `app/ai/` is model-agnostic. Switch providers via `AA_AI_PROVIDER` env var (`ollama` | `openai` | `anthropic`). Don't hardcode provider logic outside that module. The `GET /api/ai/lesson/{lesson_id}/quiz` endpoint generates structured `GameQuestion[]` from lesson content using assistant prefill + `think=False` for qwen3 reliability.
+
+**Gamification** — frontend-only state in `GameContext` (localStorage). XP, levels, streaks, achievements. `GameEngine` renders quiz/match/sort/fill questions. `LessonViewer` fetches AI-generated questions from the backend when entering Play mode, falling back to static extraction if the call fails.
+
+**Lesson content** — 36 markdown files in `lessons/{subject}/unit-{n}-lesson-{n}.md`. The seed loads them automatically; `extract_lesson_title()` in `seed.py` pulls the `# Heading` as the DB lesson title so titles stay in sync with content.
 
 **Tests** — `conftest.py` creates a function-scoped in-memory SQLite engine (drops tables after each test). Don't share state between tests; each test must set up its own data via the fixture.
 

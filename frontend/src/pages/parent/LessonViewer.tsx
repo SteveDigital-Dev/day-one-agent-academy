@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Markdown from "react-markdown";
-import { api, type Lesson, type Concept, type Subject } from "../../api/client";
+import { api, type Lesson, type Concept, type Subject, type AIQuizQuestion } from "../../api/client";
 import { useGame } from "../../context/GameContext";
 import { useAuth } from "../../context/AuthContext";
 import { XPBar } from "../../components/gamification/XPBar";
@@ -210,6 +210,8 @@ export function LessonViewer() {
   const [xpFloats, setXpFloats] = useState<{ id: number; amount: number }[]>([]);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [gameMode, setGameMode] = useState<"learn" | "game">("learn");
+  const [aiQuestions, setAiQuestions] = useState<GameQuestion[] | null>(null);
+  const [loadingQuiz, setLoadingQuiz] = useState(false);
 
   const sections = useMemo(() => {
     if (!lesson?.content) return [];
@@ -372,14 +374,30 @@ export function LessonViewer() {
               📖 Learn
             </button>
             <button
-              onClick={() => setGameMode("game")}
+              onClick={async () => {
+                setGameMode("game");
+                if (!aiQuestions && lesson && !loadingQuiz) {
+                  setLoadingQuiz(true);
+                  try {
+                    const gradeLevel = subject?.grade_band?.split("-")[0] ?? "6";
+                    const res = await api.get<{ questions: AIQuizQuestion[] }>(
+                      `/ai/lesson/${lesson.id}/quiz?count=5&grade_level=${gradeLevel}`
+                    );
+                    setAiQuestions(res.questions as GameQuestion[]);
+                  } catch {
+                    // fall through to static generation
+                  } finally {
+                    setLoadingQuiz(false);
+                  }
+                }
+              }}
               className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition-all ${
                 gameMode === "game"
                   ? "bg-white text-gray-800 shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              🎮 Play
+              {loadingQuiz ? "⏳ Generating..." : "🎮 Play"}
             </button>
           </div>
         </motion.div>
@@ -390,15 +408,27 @@ export function LessonViewer() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <GameEngine
-              title={lesson.title}
-              questions={generateGameQuestions(sections, lesson.title)}
-              onComplete={(score) => {
-                if (score >= 70) {
-                  sections.forEach((s) => markSectionComplete(s.id));
-                }
-              }}
-            />
+            {loadingQuiz ? (
+              <div className="rounded-2xl border border-purple-200 bg-purple-50 p-12 text-center">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="mx-auto mb-4 h-10 w-10 rounded-full border-4 border-purple-200 border-t-purple-600"
+                />
+                <p className="text-sm font-medium text-purple-700">Generating quiz questions with AI…</p>
+                <p className="mt-1 text-xs text-purple-400">This may take a few seconds</p>
+              </div>
+            ) : (
+              <GameEngine
+                title={lesson.title}
+                questions={aiQuestions ?? generateGameQuestions(sections, lesson.title)}
+                onComplete={(score) => {
+                  if (score >= 70) {
+                    sections.forEach((s) => markSectionComplete(s.id));
+                  }
+                }}
+              />
+            )}
           </motion.div>
         )}
 
