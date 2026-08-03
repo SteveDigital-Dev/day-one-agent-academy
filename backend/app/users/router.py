@@ -24,6 +24,12 @@ from app.users.service import (
 router = APIRouter()
 
 
+async def _owns_family(db: AsyncSession, current_user: User, family_id: str) -> bool:
+    """True if current_user has at least one student in this family."""
+    own_students = await get_students_by_parent(db, str(current_user.id))
+    return any(str(s.family_id) == family_id for s in own_students)
+
+
 @router.post("/families", response_model=FamilyResponse)
 async def create_family_endpoint(
     body: FamilyCreate,
@@ -44,6 +50,8 @@ async def get_family_endpoint(
     family = await get_family(db, family_id)
     if not family:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    if current_user.role != "admin" and not await _owns_family(db, current_user, family_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this family")
     return family
 
 
@@ -84,6 +92,14 @@ async def get_student_endpoint(
     student = await get_student_by_id(db, student_id)
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    if current_user.role == "admin":
+        return student
+    if current_user.role == "student":
+        if student_id != str(current_user.id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this student")
+        return student
+    if student.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this student")
     return student
 
 
@@ -93,4 +109,6 @@ async def list_family_students(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if current_user.role != "admin" and not await _owns_family(db, current_user, family_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this family")
     return await get_students_by_family(db, family_id)

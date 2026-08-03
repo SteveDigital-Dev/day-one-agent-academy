@@ -31,6 +31,21 @@ async def test_register_duplicate(client):
 
 
 @pytest.mark.asyncio
+async def test_register_cannot_self_assign_admin(client):
+    """Regression: self-registration used to accept any role string, so
+    anyone could POST role="admin" and bypass every ownership check in the
+    app (admin branches skip the student.user_id == current_user.id check
+    by design). role is now Literal["parent"] - anything else must 422."""
+    resp = await client.post("/api/auth/register", json={
+        "email": "wannabe-admin@test.com",
+        "password": "secret123",
+        "full_name": "Wannabe Admin",
+        "role": "admin",
+    })
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_login(client, parent_user):
     resp = await client.post("/api/auth/login", json={
         "email": "parent@test.com", "password": "test1234",

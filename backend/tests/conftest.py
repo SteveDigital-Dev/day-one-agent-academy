@@ -126,3 +126,44 @@ async def demo_student(db, parent_user):
     await db.commit()
     await db.refresh(student)
     return student
+
+
+# --- Second tenant, for cross-family IDOR regression tests ---
+
+
+@pytest.fixture
+async def parent_user_2(db):
+    user = User(
+        email="parent2@test.com",
+        hashed_password=bcrypt.hashpw(b"test1234", bcrypt.gensalt()).decode(),
+        full_name="Test Parent Two",
+        role="parent",
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@pytest.fixture
+async def parent_token_2(client, parent_user_2):
+    resp = await client.post("/api/auth/login", json={
+        "email": "parent2@test.com", "password": "test1234",
+    })
+    return resp.json()["access_token"]
+
+
+@pytest.fixture
+async def auth_headers_2(parent_token_2):
+    return {"Authorization": f"Bearer {parent_token_2}"}
+
+
+@pytest.fixture
+async def demo_student_2(db, parent_user_2):
+    student = Student(
+        user_id=parent_user_2.id, grade_level="5", nyc_student_id="NYC-TEST-2",
+    )
+    db.add(student)
+    await db.commit()
+    await db.refresh(student)
+    return student

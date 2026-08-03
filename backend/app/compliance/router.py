@@ -51,6 +51,8 @@ async def _resolve_student(
         student = await get_student_by_id(db, student_id)
         if not student:
             raise HTTPException(status_code=404)
+        if student.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized for this student")
         return student
     if current_user.role == "student":
         student = await get_student_by_id(db, str(current_user.id))
@@ -58,6 +60,24 @@ async def _resolve_student(
             raise HTTPException(status_code=404)
         return student
     raise HTTPException(status_code=403)
+
+
+async def _resolve_owned_document(current_user: User, db: AsyncSession, doc_id: str):
+    """Fetch a ComplianceDocument by id and verify current_user owns the student it belongs to."""
+    from app.compliance.models import ComplianceDocument
+    from sqlalchemy import select
+
+    result = await db.execute(
+        select(ComplianceDocument).where(ComplianceDocument.id == uuid.UUID(doc_id))
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404)
+    if current_user.role != "admin":
+        student = await get_student_by_id(db, str(doc.student_id))
+        if not student or student.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized for this document")
+    return doc
 
 
 # --- Hour Tracking ---
@@ -107,6 +127,7 @@ async def submit_ihip_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    await _resolve_owned_document(current_user, db, doc_id)
     doc = await submit_ihip(db, doc_id)
     if not doc:
         raise HTTPException(status_code=404)
@@ -133,25 +154,18 @@ async def generate_ihip_pdf(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    from app.compliance.models import ComplianceDocument
-    from sqlalchemy import select
-
-    result = await db.execute(
-        select(ComplianceDocument).where(ComplianceDocument.id == uuid.UUID(doc_id))
-    )
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(status_code=404)
+    doc = await _resolve_owned_document(current_user, db, doc_id)
+    student = await get_student_by_id(db, str(doc.student_id))
 
     content = doc.content or {}
     path = render_ihip(
-        student_name=str(current_user.full_name),
-        grade_level="unknown",
+        student_name=student.full_name if student else "unknown",
+        grade_level=student.grade_level if student else "unknown",
         school_year=doc.school_year,
         curriculum_materials=content.get("curriculum_materials", {}),
         quarterly_dates=content.get("quarterly_report_dates", []),
         instructors=content.get("instructors", []),
-        parent_name=current_user.full_name,
+        parent_name=student.user.full_name if student and student.user else current_user.full_name,
     )
     return {"path": path, "status": "generated"}
 
