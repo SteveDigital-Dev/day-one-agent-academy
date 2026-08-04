@@ -12,9 +12,9 @@ AI-powered homeschool educational platform. FastAPI backend + React/TypeScript/T
 
 ```bash
 cd backend
-uv sync
+uv sync --all-extras                             # core deps + dev group (pytest, ruff)
 uv run uvicorn app.main:app --port 8001 --reload # API on :8001
-uv run pytest tests/ -v                          # 22 tests (4 files)
+uv run pytest tests/ -v                          # 38 tests (6 files)
 uv run pytest tests/test_auth.py -v              # single test file
 uv run python -m app.seed                        # populate demo data
 uv run ruff check app/                           # lint (line-length 100, py311)
@@ -33,7 +33,13 @@ uv run ruff format app/                          # format
 | `ai` | Model-agnostic AI tutor + `GET /api/ai/lesson/{id}/quiz` for structured quiz generation |
 | `gamification` | DB models (XP events, achievements) — frontend gamification lives in `src/context/GameContext.tsx` |
 
-**Env**: copy `backend/.env.example` to `backend/.env`. Env vars use `AA_` prefix (`AA_DATABASE_URL`, `AA_SECRET_KEY`, `AA_AI_PROVIDER`).
+**Env**: copy `backend/.env.example` to `backend/.env`. Env vars use `AA_` prefix (`AA_DATABASE_URL`, `AA_SECRET_KEY`, `AA_AI_PROVIDER`, `AA_CORS_ORIGINS`).
+
+**`AA_SECRET_KEY` is enforced, not just documented** — `app/config.py` raises `RuntimeError` at import time if `secret_key` is still one of the known placeholder values (`change-me-in-production` or the `.env.example` one) *and* `AA_DEBUG` is not `true`. `secret_key` signs every JWT; either placeholder is public (one's the class default, the other's committed in `.env.example`), so leaving it in place outside local dev means anyone can forge a token for any user id. Generate a real one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+
+**`AA_CORS_ORIGINS`** — comma-separated allowed frontend origins, default `http://localhost:5173` (the documented Vite dev port). Was `allow_origins=["*"]` + `allow_credentials=True`, the specific combination CORS docs warn against (browsers handle it by reflecting the request's Origin back rather than actually restricting anything). Override for any real deployment.
+
+**Rate limiting** — `POST /api/auth/login` (10/min) and `/register` (5/min) are limited via `slowapi`, keyed by remote address (`app/rate_limit.py`). `tests/conftest.py` disables the limiter globally (`limiter.enabled = False`) because several fixtures log in fresh per test and would otherwise trip it; `test_login_is_rate_limited` in `test_auth.py` re-enables it just for that one test.
 
 **DB**: SQLite+aiosqlite for dev, PostgreSQL for production. Alembic configured but schema created via `Base.metadata.create_all` on startup. Tests use in-memory SQLite.
 
@@ -66,6 +72,8 @@ Routes live in `src/App.tsx`. Parent dashboard under `/dashboard/` (default), te
 - **Tests**: function-scoped engine drops tables after each test. Each test sets up its own data via fixtures in `conftest.py`. Don't share state between tests.
 - **Frontend proxy**: `vite.config.ts` proxies `/api` to `localhost:8001` — both servers must run simultaneously.
 - **Ruff config**: `line-length = 100`, `target-version = "py311"`, selects `["E", "F", "I", "N", "W"]`.
+- **Every endpoint taking a client-supplied id must check ownership, not just existence.** `users`, `compliance`, and `learning` routers all had endpoints that fetched a `student_id`/`family_id`/`doc_id` and returned real data (including NY compliance/IHIP records) for *any* authenticated user, not just the owner — fixed, but the pattern is easy to reintroduce on a new endpoint. The rule: after `get_x_by_id`, a non-admin caller must additionally satisfy `x.user_id == current_user.id` (or, for family-scoped resources, own a student with that `family_id` — see `_owns_family` in `users/router.py`) before the data goes back in the response. `compliance/router.py`'s `_resolve_student`/`_resolve_owned_document` and `learning/router.py`'s `_resolve_student` are the reference implementations. `role == "admin"` is the only sanctioned bypass.
+- **Self-registration cannot set its own role.** `auth/schemas.py`'s `RegisterRequest.role` is `Literal["parent"]` — do not widen this without a real authorization check in front of it. It used to accept any string, so anyone could `POST /register` with `role: "admin"` and hit the admin bypass above directly.
 
 ## Lesson content
 

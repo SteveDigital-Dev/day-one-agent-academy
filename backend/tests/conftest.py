@@ -12,11 +12,18 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, Asyn
 from app.database import Base, get_db
 from app.main import app
 from app.config import settings
+from app.rate_limit import limiter
 from app.auth.models import User
 from app.users.models import Student, Family
 from app.compliance.models import ComplianceDocument, HourLog, AnnualAssessment
 from app.curriculum.models import Subject, Concept, Lesson
 from app.learning.models import LessonProgress, QuizAttempt
+
+# Most fixtures below log in fresh per test (parent_token, parent_token_2),
+# so the full suite easily exceeds login/register's real rate limits within
+# a single wall-clock minute. Rate limiting itself isn't what these tests
+# are for - disable it here rather than let it flake the whole suite.
+limiter.enabled = False
 
 TEST_DB_URL = "sqlite+aiosqlite://"
 

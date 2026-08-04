@@ -2,6 +2,8 @@
 
 import pytest
 
+from app.rate_limit import limiter
+
 
 @pytest.mark.asyncio
 async def test_register(client):
@@ -76,3 +78,22 @@ async def test_me(client, parent_token):
 async def test_me_unauthorized(client):
     resp = await client.get("/api/auth/me")
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_login_is_rate_limited(client, parent_user):
+    """conftest disables the limiter globally so the rest of the suite isn't
+    flaky (fixtures log in fresh per test) - re-enable it just here to lock
+    in that login actually throttles repeated attempts."""
+    limiter.enabled = True
+    try:
+        responses = [
+            await client.post(
+                "/api/auth/login",
+                json={"email": "parent@test.com", "password": "wrong"},
+            )
+            for _ in range(11)
+        ]
+    finally:
+        limiter.enabled = False
+    assert 429 in [r.status_code for r in responses]

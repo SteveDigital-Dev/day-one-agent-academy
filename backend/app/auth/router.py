@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.rate_limit import limiter
 from app.auth.models import User
 from app.auth.schemas import LoginRequest, RegisterRequest, Token, AuthUser
 from app.auth.service import (
@@ -36,7 +37,8 @@ async def get_current_user(
 
 
 @router.post("/register", response_model=Token)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def register(request: Request, body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     existing = await get_user_by_email(db, body.email)
     if existing:
         raise HTTPException(
@@ -55,7 +57,8 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)):
     user = await get_user_by_email(db, body.email)
     if not user or not verify_password(body.password, user.hashed_password):
         raise HTTPException(
