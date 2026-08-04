@@ -110,7 +110,7 @@ async def seed():
         )
         db.add(parent)
         await db.flush()
-        print(f"✓ Created parent: {PARENT_EMAIL} / {PARENT_PASSWORD}")
+        print(f"✓ Created parent: {PARENT_EMAIL} (see AGENTS.md for demo password)")
 
         # ── 2. Family ─────────────────────────────────────────────────────
         family = Family(name="Chen Family")
@@ -365,7 +365,7 @@ async def seed():
         await db.commit()
         print(f"\n{'='*60}")
         print(f"Seed complete! School year: {SCHOOL_YEAR}")
-        print(f"Login: {PARENT_EMAIL} / {PARENT_PASSWORD}")
+        print(f"Login: {PARENT_EMAIL} (see AGENTS.md for demo password)")
         print(f"{'='*60}")
 
 
