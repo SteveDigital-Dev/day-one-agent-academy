@@ -6,7 +6,17 @@ from typing import Literal
 # lives in source, the .env.example one is committed), so if either is
 # still in use, anyone can forge a JWT for any user id and skip login/
 # registration entirely.
-INSECURE_SECRET_KEYS = {"change-me-in-production", "change-me-to-a-random-secret"}
+INSECURE_SECRET_KEYS = {
+    "change-me-in-production",
+    "change-me-to-a-random-secret",
+    "change-me-to-a-real-random-secret-value-please",
+}
+
+# RFC 7518 3.2: HS256 keys shorter than the hash output size (32 bytes)
+# are weaker than the algorithm intends. PyJWT warns on this at decode
+# time (InsecureKeyLengthWarning); enforce it once at startup instead of
+# letting it fire as noise on every single request.
+MIN_SECRET_KEY_LENGTH = 32
 
 
 class Settings(BaseSettings):
@@ -57,4 +67,13 @@ if not settings.debug and settings.secret_key in INSECURE_SECRET_KEYS:
         "a valid token for any user id. Set AA_SECRET_KEY to a real random "
         "value (e.g. `python -c \"import secrets; print(secrets.token_urlsafe(32))\"`) "
         "before running outside of local development (AA_DEBUG=true)."
+    )
+
+if not settings.debug and len(settings.secret_key) < MIN_SECRET_KEY_LENGTH:
+    raise RuntimeError(
+        f"AA_SECRET_KEY is only {len(settings.secret_key)} characters - RFC 7518 "
+        f"recommends at least {MIN_SECRET_KEY_LENGTH} for HS256 (PyJWT will warn on "
+        "every decode otherwise, since a short key is weaker than the algorithm "
+        "intends). Set AA_SECRET_KEY to a real random value (e.g. "
+        "`python -c \"import secrets; print(secrets.token_urlsafe(32))\"`)."
     )

@@ -33,7 +33,7 @@ npx vitest run       # frontend tests
 
 Copy `backend/.env.example` to `backend/.env` before first run. Default AI provider is Ollama (`qwen3:4b` on port 11434).
 
-`AA_SECRET_KEY` must be a real random value once `AA_DEBUG=false` — `app/config.py` raises `RuntimeError` at import time otherwise (it signs every JWT; the placeholder is public since it's committed in `.env.example`). `AA_CORS_ORIGINS` (comma-separated) controls allowed frontend origins, default `http://localhost:5173`. `/api/auth/login` and `/register` are rate-limited via `slowapi` (`app/rate_limit.py`) — disabled in `tests/conftest.py` since fixtures log in fresh per test.
+`AA_SECRET_KEY` must be a real random value (32+ chars) once `AA_DEBUG=false` — `app/config.py` raises `RuntimeError` at import time otherwise (it signs every JWT; the placeholder is public since it's committed in `.env.example`, and short keys are weaker than HS256 intends per RFC 7518). `AA_CORS_ORIGINS` (comma-separated) controls allowed frontend origins, default `http://localhost:5173`. `/api/auth/login` and `/register` are rate-limited via `slowapi` (`app/rate_limit.py`) — disabled in `tests/conftest.py` since fixtures log in fresh per test. JWT lib is PyJWT (not python-jose — see AGENTS.md for why).
 
 ## Architecture
 
